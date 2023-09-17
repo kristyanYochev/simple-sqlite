@@ -1,4 +1,5 @@
 mod meta_command;
+use meta_command::do_meta_command;
 
 use std::io::Write;
 
@@ -8,10 +9,14 @@ fn main() {
 
         let buffer = read_input();
 
-        if buffer == ".exit" {
-            break;
-        } else {
-            println!("Unrecognized command '{}'.", buffer);
+        if buffer.starts_with(".") {
+            match do_meta_command(&buffer) {
+                Ok(()) => continue,
+                Err(e) => {
+                    eprintln!("{}", e);
+                    continue;
+                }
+            }
         }
     }
 }
