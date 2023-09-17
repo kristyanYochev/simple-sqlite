@@ -1,3 +1,5 @@
+mod meta_command;
+
 use std::io::Write;
 
 fn main() {
