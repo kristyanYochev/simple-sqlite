@@ -19,6 +19,17 @@ fn main() {
                 }
             }
         }
+
+        let statement = match sql::prepare_statement(&buffer) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("{}", e);
+                continue;
+            }
+        };
+
+        execute_statement(statement);
+        println!("Executed!")
     }
 }
 
@@ -35,4 +46,13 @@ fn read_input() -> String {
         .expect("Error reading input!");
 
     buffer.trim().into()
+}
+
+fn execute_statement(statement: sql::Statement) {
+    use sql::Statement as S;
+
+    match statement {
+        S::Insert => println!("Here we do insertion."),
+        S::Select => println!("Here we do selection."),
+    }
 }
