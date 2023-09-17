@@ -1,3 +1,7 @@
+mod meta_command;
+mod sql;
+use meta_command::do_meta_command;
+
 use std::io::Write;
 
 fn main() {
@@ -6,11 +10,26 @@ fn main() {
 
         let buffer = read_input();
 
-        if buffer == ".exit" {
-            break;
-        } else {
-            println!("Unrecognized command '{}'.", buffer);
+        if buffer.starts_with(".") {
+            match do_meta_command(&buffer) {
+                Ok(()) => continue,
+                Err(e) => {
+                    eprintln!("{}", e);
+                    continue;
+                }
+            }
         }
+
+        let statement = match sql::prepare_statement(&buffer) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("{}", e);
+                continue;
+            }
+        };
+
+        execute_statement(statement);
+        println!("Executed!")
     }
 }
 
@@ -27,4 +46,13 @@ fn read_input() -> String {
         .expect("Error reading input!");
 
     buffer.trim().into()
+}
+
+fn execute_statement(statement: sql::Statement) {
+    use sql::Statement as S;
+
+    match statement {
+        S::Insert => println!("Here we do insertion."),
+        S::Select => println!("Here we do selection."),
+    }
 }
