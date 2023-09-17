@@ -1,4 +1,5 @@
 mod meta_command;
+mod sql;
 use meta_command::do_meta_command;
 
 use std::io::Write;
