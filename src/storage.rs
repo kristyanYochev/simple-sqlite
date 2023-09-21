@@ -2,6 +2,8 @@ use std::fmt;
 use std::io::{self, Read, Write};
 use std::mem::size_of;
 
+use thiserror::Error;
+
 const MAX_PAGES: usize = 100;
 pub struct Table {
     num_rows: usize,
@@ -23,6 +25,14 @@ const ROWS_PER_PAGE: usize = PAGE_SIZE / ROW_SIZE;
 
 struct Page {
     memory: [u8; PAGE_SIZE],
+}
+
+#[derive(Debug, Error)]
+pub enum InsertError {
+    #[error("Not enough space")]
+    NotEnoughSpace,
+    #[error("Failed to write data")]
+    IoError(#[from] io::Error),
 }
 
 impl Table {
@@ -60,24 +70,24 @@ impl Table {
         &page.memory[byte_offset..]
     }
 
-    pub fn insert_row(&mut self, row: &Row) {
+    pub fn insert_row(&mut self, row: &Row) -> Result<(), InsertError> {
         if self.num_rows >= Self::MAX_ROWS {
-            panic!("Not enough space!");
-            todo!("Create failure type");
+            return Err(InsertError::NotEnoughSpace);
         }
 
-        row.write_to_buffer(&mut self.row_slot_mut(self.num_rows))
-            .unwrap();
+        row.write_to_buffer(&mut self.row_slot_mut(self.num_rows))?;
 
         self.num_rows += 1;
+
+        Ok(())
     }
 
-    pub fn all_rows(&self) -> impl Iterator<Item = Row> + '_ {
+    pub fn all_rows(&self) -> impl Iterator<Item = io::Result<Row>> + '_ {
         (0..self.num_rows).map(|row_num| self.get_row(row_num))
     }
 
-    fn get_row(&self, row_num: usize) -> Row {
-        Row::read_from_buffer(&mut self.row_slot(row_num)).unwrap()
+    fn get_row(&self, row_num: usize) -> io::Result<Row> {
+        Row::read_from_buffer(&mut self.row_slot(row_num))
     }
 }
 

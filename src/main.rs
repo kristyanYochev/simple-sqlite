@@ -3,9 +3,10 @@ mod sql;
 mod storage;
 
 use meta_command::do_meta_command;
-use storage::{Row, Table};
+use storage::{InsertError, Row, Table};
+use thiserror::Error;
 
-use std::io::Write;
+use std::io::{self, Write};
 
 fn main() {
     let mut table = Table::new();
@@ -32,8 +33,14 @@ fn main() {
             }
         };
 
-        execute_statement(&mut table, &statement);
-        println!("Executed!")
+        match execute_statement(&mut table, &statement) {
+            Err(e) => {
+                eprintln!("{}", e);
+                continue;
+            }
+            Ok(_) => {}
+        }
+        println!("Executed!");
     }
 }
 
@@ -52,19 +59,33 @@ fn read_input() -> String {
     buffer.trim().into()
 }
 
-fn execute_statement(table: &mut Table, statement: &sql::Statement) {
+#[derive(Debug, Error)]
+enum ExecuteError {
+    #[error("Unable to insert")]
+    InsertError(#[from] InsertError),
+    #[error("Unable to select")]
+    IoError(#[from] io::Error),
+}
+
+fn execute_statement(table: &mut Table, statement: &sql::Statement) -> Result<(), ExecuteError> {
     use sql::Statement as S;
 
     match statement {
-        S::Insert { row_to_insert } => execute_insert(table, &row_to_insert),
-        S::Select => execute_select(&table),
+        S::Insert { row_to_insert } => execute_insert(table, &row_to_insert)?,
+        S::Select => execute_select(&table)?,
     }
+
+    Ok(())
 }
 
-fn execute_insert(table: &mut Table, row_to_insert: &Row) {
+fn execute_insert(table: &mut Table, row_to_insert: &Row) -> Result<(), InsertError> {
     table.insert_row(row_to_insert)
 }
 
-fn execute_select(table: &Table) {
-    table.all_rows().for_each(|row| println!("{}", row))
+fn execute_select(table: &Table) -> io::Result<()> {
+    for row in table.all_rows() {
+        println!("{}", row?)
+    }
+
+    Ok(())
 }
