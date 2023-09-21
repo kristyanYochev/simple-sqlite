@@ -1,12 +1,16 @@
-use core::slice::SlicePattern;
-use std::{array::TryFromSliceError, mem::size_of, num::ParseIntError};
+use std::array::TryFromSliceError;
+use std::io::{self, Read, Write};
+use std::mem::size_of;
+use std::num::ParseIntError;
 
 use thiserror::Error;
 
+const USERNAME_LENGTH: usize = 32;
+const EMAIL_LENGTH: usize = 256;
 struct Row {
     id: u32,
-    username: [u8; 32],
-    email: [u8; 256],
+    username: [u8; USERNAME_LENGTH],
+    email: [u8; EMAIL_LENGTH],
 }
 
 pub enum Statement {
@@ -61,53 +65,67 @@ pub fn prepare_statement(buffer: &String) -> Result<Statement, PrepareError> {
 }
 
 impl Row {
-    const ID_OFFSET: usize = 0;
-    const ID_SIZE: usize = size_of_ret_type(|x: Self| x.id);
-    const USERNAME_OFFSET: usize = Self::ID_OFFSET + Self::ID_SIZE;
-    const USERNAME_SIZE: usize = size_of_ret_type(|x: Self| x.username);
-    const EMAIL_OFFSET: usize = Self::USERNAME_OFFSET + Self::USERNAME_SIZE;
-    const EMAIL_SIZE: usize = size_of_ret_type(|x: Self| x.email);
-
-    pub fn copy_to_bytes(&self, dst: &mut [u8]) {
+    pub fn write_to_buffer(&self, dst: &mut dyn Write) -> io::Result<()> {
         let id_bytes = self.id.to_ne_bytes();
-        assert_eq!(Self::ID_SIZE, id_bytes.len());
-        dst[Self::ID_OFFSET..Self::ID_OFFSET + Self::ID_SIZE].copy_from_slice(id_bytes.as_slice());
-
-        let username_start = Self::USERNAME_OFFSET;
-        let username_end = username_start + Self::USERNAME_SIZE;
-        assert_eq!(Self::USERNAME_SIZE, self.username.len());
-        dst[username_start..username_end].copy_from_slice(self.username.as_slice());
-
-        let email_start = Self::EMAIL_OFFSET;
-        let email_end = email_start + Self::EMAIL_SIZE;
-        assert_eq!(Self::EMAIL_SIZE, self.email.len());
-        dst[email_start..email_end].copy_from_slice(self.email.as_slice());
+        dst.write(id_bytes.as_slice())?;
+        dst.write(self.username.as_slice())?;
+        dst.write(self.email.as_slice())?;
+        Ok(())
     }
 
-    pub fn from_bytes(&self, src: &[u8]) -> Row {
-        let id_start = Self::ID_OFFSET;
-        let id_end = id_start + Self::ID_SIZE;
-        let id = u32::from_ne_bytes(src[id_start..id_end].try_into().unwrap());
+    pub fn from_buffer(src: &mut dyn Read) -> io::Result<Row> {
+        let mut id_bytes = [0u8; size_of::<u32>()];
+        src.read_exact(&mut id_bytes)?;
+        let id = u32::from_ne_bytes(id_bytes);
 
-        let username_start = Self::USERNAME_OFFSET;
-        let username_end = username_start + Self::USERNAME_SIZE;
-        let username = src[username_start..username_end].try_into().unwrap();
+        let mut username = [0u8; USERNAME_LENGTH];
+        src.read_exact(&mut username)?;
 
-        let email_start = Self::EMAIL_OFFSET;
-        let email_end = email_start + Self::EMAIL_SIZE;
-        let email = src[email_start..email_end].try_into().unwrap();
+        let mut email = [0u8; EMAIL_LENGTH];
+        src.read_exact(&mut email)?;
 
-        Row {
+        Ok(Row {
             id,
             username,
             email,
+        })
+    }
+
+    pub fn new(id: u32, username: &str, email: &str) -> Row {
+        let mut username_buffer = [0u8; USERNAME_LENGTH];
+        let mut email_buffer = [0u8; EMAIL_LENGTH];
+
+        username_buffer
+            .as_mut_slice()
+            .write(username.as_bytes())
+            .unwrap();
+        email_buffer.as_mut_slice().write(email.as_bytes()).unwrap();
+
+        Row {
+            id,
+            username: username_buffer,
+            email: email_buffer,
         }
     }
 }
 
-const fn size_of_ret_type<F, T, U>(_f: F) -> usize
-where
-    F: FnOnce(T) -> U,
-{
-    size_of::<U>()
+#[cfg(test)]
+mod test {
+    use super::Row;
+
+    #[test]
+    fn serialization_and_deserialization_are_reverses_of_eachother() {
+        let mut test_memory = [0u8; 512];
+
+        let row = Row::new(3, "Test User", "test@tester.com");
+
+        row.write_to_buffer(&mut test_memory.as_mut_slice())
+            .unwrap();
+
+        let deserialized_row = Row::from_buffer(&mut test_memory.as_slice()).unwrap();
+
+        assert_eq!(row.id, deserialized_row.id);
+        assert_eq!(row.username, deserialized_row.username);
+        assert_eq!(row.email, deserialized_row.email);
+    }
 }
