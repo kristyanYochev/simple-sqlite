@@ -7,7 +7,7 @@ use thiserror::Error;
 
 const USERNAME_LENGTH: usize = 32;
 const EMAIL_LENGTH: usize = 256;
-struct Row {
+pub struct Row {
     id: u32,
     username: [u8; USERNAME_LENGTH],
     email: [u8; EMAIL_LENGTH],
