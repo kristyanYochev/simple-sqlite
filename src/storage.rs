@@ -10,16 +10,6 @@ pub struct Table {
     pages: [Option<Box<Page>>; MAX_PAGES],
 }
 
-const USERNAME_LENGTH: usize = 32;
-const EMAIL_LENGTH: usize = 256;
-pub const ROW_SIZE: usize =
-    size_of::<u32>() + size_of::<[u8; USERNAME_LENGTH]>() + size_of::<[u8; EMAIL_LENGTH]>();
-pub struct Row {
-    id: u32,
-    username: [u8; USERNAME_LENGTH],
-    email: [u8; EMAIL_LENGTH],
-}
-
 const PAGE_SIZE: usize = 4096;
 const ROWS_PER_PAGE: usize = PAGE_SIZE / ROW_SIZE;
 
@@ -103,6 +93,16 @@ impl Default for Page {
     fn default() -> Self {
         Page::new()
     }
+}
+
+const USERNAME_LENGTH: usize = 32;
+const EMAIL_LENGTH: usize = 256;
+pub const ROW_SIZE: usize =
+    size_of::<u32>() + size_of::<[u8; USERNAME_LENGTH]>() + size_of::<[u8; EMAIL_LENGTH]>();
+pub struct Row {
+    id: u32,
+    username: [u8; USERNAME_LENGTH],
+    email: [u8; EMAIL_LENGTH],
 }
 
 impl Row {
