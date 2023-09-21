@@ -1,4 +1,5 @@
 use std::array::TryFromSliceError;
+use std::fmt;
 use std::io::{self, Read, Write};
 use std::mem::size_of;
 use std::num::ParseIntError;
@@ -7,6 +8,8 @@ use thiserror::Error;
 
 const USERNAME_LENGTH: usize = 32;
 const EMAIL_LENGTH: usize = 256;
+pub const ROW_SIZE: usize =
+    size_of::<u32>() + size_of::<[u8; USERNAME_LENGTH]>() + size_of::<[u8; EMAIL_LENGTH]>();
 pub struct Row {
     id: u32,
     username: [u8; USERNAME_LENGTH],
@@ -40,22 +43,12 @@ pub fn prepare_statement(buffer: &String) -> Result<Statement, PrepareError> {
             .ok_or(PrepareError::NotEnoughArguments)?
             .parse::<u32>()?;
 
-        let username = parts
-            .next()
-            .ok_or(PrepareError::NotEnoughArguments)?
-            .as_bytes();
+        let username = parts.next().ok_or(PrepareError::NotEnoughArguments)?;
 
-        let email = parts
-            .next()
-            .ok_or(PrepareError::NotEnoughArguments)?
-            .as_bytes();
+        let email = parts.next().ok_or(PrepareError::NotEnoughArguments)?;
 
         Ok(Statement::Insert {
-            row_to_insert: Row {
-                id,
-                username: username.try_into()?,
-                email: email.try_into()?,
-            },
+            row_to_insert: Row::new(id, username, email),
         })
     } else if buffer == "select" {
         Ok(Statement::Select)
@@ -106,6 +99,18 @@ impl Row {
             username: username_buffer,
             email: email_buffer,
         }
+    }
+}
+
+impl fmt::Display for Row {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} {} {}",
+            self.id,
+            String::from_utf8_lossy(&self.username),
+            String::from_utf8_lossy(&self.email)
+        )
     }
 }
 

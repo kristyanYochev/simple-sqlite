@@ -1,11 +1,15 @@
 mod meta_command;
 mod sql;
 mod storage;
+
 use meta_command::do_meta_command;
+use sql::Row;
+use storage::Table;
 
 use std::io::Write;
 
 fn main() {
+    let mut table = Table::new();
     loop {
         show_prompt();
 
@@ -29,7 +33,7 @@ fn main() {
             }
         };
 
-        execute_statement(statement);
+        execute_statement(&mut table, &statement);
         println!("Executed!")
     }
 }
@@ -49,11 +53,19 @@ fn read_input() -> String {
     buffer.trim().into()
 }
 
-fn execute_statement(statement: sql::Statement) {
+fn execute_statement(table: &mut Table, statement: &sql::Statement) {
     use sql::Statement as S;
 
     match statement {
-        S::Insert { .. } => println!("Here we do insertion."),
-        S::Select => println!("Here we do selection."),
+        S::Insert { row_to_insert } => execute_insert(table, &row_to_insert),
+        S::Select => execute_select(&table),
     }
+}
+
+fn execute_insert(table: &mut Table, row_to_insert: &Row) {
+    table.insert_row(row_to_insert)
+}
+
+fn execute_select(table: &Table) {
+    table.all_rows().for_each(|row| println!("{}", row))
 }
