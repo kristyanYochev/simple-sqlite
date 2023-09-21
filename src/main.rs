@@ -52,7 +52,7 @@ fn execute_statement(statement: sql::Statement) {
     use sql::Statement as S;
 
     match statement {
-        S::Insert => println!("Here we do insertion."),
+        S::Insert { .. } => println!("Here we do insertion."),
         S::Select => println!("Here we do selection."),
     }
 }
