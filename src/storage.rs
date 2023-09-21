@@ -77,7 +77,7 @@ impl Table {
     }
 
     fn get_row(&self, row_num: usize) -> Row {
-        Row::from_buffer(&mut self.row_slot(row_num)).unwrap()
+        Row::read_from_buffer(&mut self.row_slot(row_num)).unwrap()
     }
 }
 
@@ -104,7 +104,7 @@ impl Row {
         Ok(())
     }
 
-    pub fn from_buffer(src: &mut dyn Read) -> io::Result<Row> {
+    pub fn read_from_buffer(src: &mut dyn Read) -> io::Result<Row> {
         let mut id_bytes = [0u8; size_of::<u32>()];
         src.read_exact(&mut id_bytes)?;
         let id = u32::from_ne_bytes(id_bytes);
@@ -165,7 +165,7 @@ mod test {
         row.write_to_buffer(&mut test_memory.as_mut_slice())
             .unwrap();
 
-        let deserialized_row = Row::from_buffer(&mut test_memory.as_slice()).unwrap();
+        let deserialized_row = Row::read_from_buffer(&mut test_memory.as_slice()).unwrap();
 
         assert_eq!(row.id, deserialized_row.id);
         assert_eq!(row.username, deserialized_row.username);
