@@ -3,8 +3,7 @@ mod sql;
 mod storage;
 
 use meta_command::do_meta_command;
-use sql::Row;
-use storage::Table;
+use storage::{Row, Table};
 
 use std::io::Write;
 
