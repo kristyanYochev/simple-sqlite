@@ -19,7 +19,7 @@ fn main() {
             match do_meta_command(&buffer) {
                 Ok(()) => continue,
                 Err(e) => {
-                    eprintln!("{}", e);
+                    report_error(e);
                     continue;
                 }
             }
@@ -28,14 +28,14 @@ fn main() {
         let statement = match sql::prepare_statement(&buffer) {
             Ok(s) => s,
             Err(e) => {
-                eprintln!("{}", e);
+                report_error(e);
                 continue;
             }
         };
 
         match execute_statement(&mut table, &statement) {
             Err(e) => {
-                eprintln!("{}", e);
+                report_error(e);
                 continue;
             }
             Ok(_) => {}
@@ -88,4 +88,19 @@ fn execute_select(table: &Table) -> io::Result<()> {
     }
 
     Ok(())
+}
+
+fn report_error<E: 'static>(error: E)
+where
+    E: std::error::Error,
+    E: Send + Sync,
+{
+    eprintln!("[ERR] {}", error);
+    if let Some(cause) = error.source() {
+        eprintln!();
+        eprintln!("Caused by:");
+        for (i, e) in std::iter::successors(Some(cause), |e| e.source()).enumerate() {
+            eprintln!("\t{}: {}", i, e);
+        }
+    }
 }
